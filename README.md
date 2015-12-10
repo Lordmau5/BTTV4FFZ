@@ -34,14 +34,3 @@ GreaseMonkey Installation: https://cdn.lordmau5.com/bttv4ffz.user.js
 FrankerFaceZ is **required** for this extension to work!  
 If FrankerFaceZ is not found, the emotes will **not be available!**  
 Also, don't use this together with BetterTTV.
-
-## Changelog:  
-1.0.5:  
-+ Added shift-clicking for channel-emotes  
-+ New requirement for emotes, that contain non-alphanumerical-characters to have a whitespace character infront and after.  
-  Example: "D:\" would not work, whereas "D: \" would.  
-
-1.0.4:  
-+ Added BTTV overlaying emote feature for "halloPirate", "halloHat", "halloEars"  
-  and "halloHorns". Non-dynamic for now, but will change in the future for  
-  other events.  
