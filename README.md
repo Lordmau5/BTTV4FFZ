@@ -27,7 +27,8 @@ Check the question above on how to do that. There is another toggle-bar to disab
 
 ## Links
 Chrome Webstore: https://chrome.google.com/webstore/detail/betterttv-emotes-for-fran/aiimboljphncldaakcnapfolgnjonlea  
-Firefox Add-Ons: https://addons.mozilla.org/en-US/firefox/addon/betterttv-for-frankerfacez/
+~~Firefox Add-Ons: ---~~
+GreaseMonkey Installation: https://cdn.lordmau5.com/bttv4ffz.user.js
 
 ## IMPORTANT:  
 FrankerFaceZ is **required** for this extension to work!  
