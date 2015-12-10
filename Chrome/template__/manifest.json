@@ -1,0 +1,22 @@
+{
+   "manifest_version": 2,
+   "name": "BetterTTV Emotes for FrankerFaceZ",
+   "short_name": "BTTV4FFZ",
+   "version": "%%VERSION%%",
+   "description": "Add the BTTV emotes on-top of FFZ!",
+   "icons": {
+      "48": "chrome/icon48.png",
+      "128": "chrome/icon128.png" },
+   "content_scripts": [ {
+      "all_frames": true,
+      "js": [ "chrome/script.js" ],
+      "matches": [ "*://*.twitch.tv/*" ],
+      "exclude_globs": [ "*://api.twitch.tv/*" ]
+   } ],
+   "permissions": [
+      "*://*.twitch.tv/*",
+      "*://*.frankerfacez.com/*",
+      "*://*.betterttv.net/*",
+      "management"
+   ]
+}

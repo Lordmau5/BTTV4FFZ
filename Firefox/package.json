@@ -1,0 +1,16 @@
+{
+  "title": "BetterTTV for FrankerFaceZ",
+  "name": "BTTV4FFZ",
+  "version": "1.0.7",
+  "description": "Get those BetterTTV emotes in FFZ!",
+  "main": "firefox.js",
+  "author": "Lordmau5",
+  "permissions": {
+    "private-browsing": true,
+    "multiprocess": true
+  },
+  "engines": {
+    "firefox": ">=38.0a1",
+    "fennec": ">=38.0a1"
+  }
+}
