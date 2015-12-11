@@ -9,7 +9,7 @@ $version = gets.strip
 
 def ff_copy_template()
 	FileUtils.cp("Firefox/template__/install.rdf", "Firefox/install.rdf")
-	FileUtils.cp("Firefox/template__/package.json", "Firefox/package.json")
+	FileUtils.cp("Firefox/template__/harness-options.json", "Firefox/harness-options.json")
 end
 ff_copy_template
 
@@ -21,10 +21,10 @@ def ff_replace_version()
 
 	######################################################################
 
-	text = File.read("Firefox/package.json")
+	text = File.read("Firefox/harness-options.json")
 	new_content = text.gsub(/%%VERSION%%/, $version)
 
-	File.open("Firefox/package.json", "w") { |file| file.puts new_content }
+	File.open("Firefox/harness-options.json", "w") { |file| file.puts new_content }
 end
 ff_replace_version
 
