@@ -1,5 +1,5 @@
 // Version naming: (Main-version).(Sub-version)
-// Version: 1.0.7.3
+// Version: 1.0.7.4
 
 /*
     This file is being updated on my server (cdn.lordmau5.com) first before changes to the GitHub repo happen.
@@ -225,8 +225,8 @@ var implementBTTVGlobals = function(attempts) {
                 }
 
                 // TODO: Dynamically rework for event emoticons
-                // if(emote["regex"] === "halloHat" || emote["regex"] === "halloPirate" || emote["regex"] === "halloEars" || emote["regex"] === "halloHorns")
-                //     xMote["margins"] = "-8px 8px 0px -30px";
+                if(emote["regex"] === "SoSnowy" || emote["regex"] === "CandyCane" || emote["regex"] === "ReinDeer" || emote["regex"] === "SantaHat")
+                     xMote["margins"] = "-8px 8px 0px -30px";
 
                 emote["imageType"] === "gif" ? globalBTTV_GIF.push(xMote) : globalBTTV.push(xMote);
             }
