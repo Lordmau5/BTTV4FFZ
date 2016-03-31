@@ -1,5 +1,5 @@
 // Version naming: (Main-version).(Sub-version)
-// Version: 1.0.7.5
+// Version: 1.1.0
 
 /*
     This file is being updated on my server (cdn.lordmau5.com) first before changes to the GitHub repo happen.
@@ -7,21 +7,16 @@
     This makes it easier for me to do updates when necessary (sudden FFZ-API changes, for example)
 */
 
-/*
-    TODO: First frame of GIFs when GIF-emotes are not enabled
-    Download image, draw (first frame) into canvas, get URI / base64 string, put in emotes
-    Somehow...
-*/
-
 (function(){
 
 // Global Storage / Settings
 
-var version = "1.0.7.5";
+var version = "1.1.0";
 
 var api,
     ffz,
-    current_channel,
+    last_channel_id = 9000,
+    channels = {},
     enable_global_emotes,
     enable_gif_emotes,
     enable_override_emotes;
@@ -117,12 +112,19 @@ var doSettings = function() {
                 if(enable_global_emotes)
                   api.register_global_set(2);
 
-                api.register_room_set(current_channel, 9002);
+                for(var name in channels) {
+                    api.register_room_set(name, channels[name]["gifemotes_setid"], channels[name]["gifemotes"]);
+                }
             }
             else {
                 api.unregister_global_set(2);
 
-                api.unregister_room_set(current_channel, 9002);
+                for(var name in channels) {
+                    if(channels[name]["gifemotes_still"])
+                        api.register_room_set(name, channels[name]["gifemotes_setid"], channels[name]["gifemotes_still"]);
+                    else
+                        api.unload_set(channels[name]["gifemotes_setid"]);
+                }
             }
 
             enable_gif_emotes = enabled;
@@ -133,7 +135,7 @@ var doSettings = function() {
 
     FrankerFaceZ.settings_info.bttv_enable_override_emotes = {
         type: "boolean",
-        value: true,
+        value: false,
         category: "BTTV4FFZ",
         name: "Enable Override Emotes",
         help: "Enable this to show override emotes (like D:).",
@@ -196,26 +198,74 @@ var channelCallback = function(room_id, reg_function, attempts) {
                     channelBTTV.push(xMote);
 
                 if (emote["imageType"] === "gif")
-                    channelBTTV_GIF.push(xMote);
+                  channelBTTV_GIF.push(xMote);
             }
 
             if (!channelBTTV.length)
                 return;
 
+            channels[room_id] = {
+                emotes: last_channel_id,
+                gifemotes_setid: last_channel_id + 1
+            };
+            last_channel_id += 2;
+
             var set = {
                 emoticons: channelBTTV,
-                title: "BetterTTV Emoticons"
+                title: "Emoticons"
             };
 
-            api.register_room_set(room_id, 9001, set); // Load normal emotes
+            api.register_room_set(room_id, channels[room_id]["emotes"], set); // Load normal emotes
 
             set = {
                 emoticons: channelBTTV_GIF,
-                title: "BetterTTV Emoticons (GIF)"
+                title: "Emoticons (GIF)"
             };
 
-            api.register_room_set(room_id, 9002, set); // Load GIF emotes
+            channels[room_id]["gifemotes"] = jQuery.extend(true, {}, set);
+            var tempStillEmotes = jQuery.extend(true, {}, set);
 
+            var stillEmotes = tempStillEmotes["emoticons"];
+
+            for(var i=0; i<stillEmotes.length; i++) {
+                var element = stillEmotes[i];
+                for(var key in element["urls"]) {
+                    var img = new Image();
+
+                    img.onload = (function(array_index, size) {
+                        var canvas = document.createElement("canvas");
+                        var ctx = canvas.getContext("2d");
+
+                        canvas.width = this.width;
+                        canvas.height = this.height;
+
+                        ctx.drawImage(this, 0, 0);
+
+                        if(!channels[room_id]["gifemotes_still"]) {
+                            channels[room_id]["gifemotes_still"] = tempStillEmotes;
+                        }
+
+                        stillEmotes[array_index]["urls"][size] = canvas.toDataURL();
+
+                        api.register_room_set(room_id, channels[room_id]["gifemotes_setid"], channels[room_id]["gifemotes_still"]); // Load static GIF emotes
+                    }).bind(img, i, key);
+                    img.onerror = function(errorMsg, url, lineNumber, column, errorObj) {
+                      console.log("Couldn't load.");
+                    };
+                    img.crossOrigin = "anonymous";
+                    img.src = element["urls"][key] + ".png";
+
+                    if(img.height > 0) {
+                        img.src = "";
+                        img.src = element["urls"][key];
+                    }
+                }
+            }
+
+            api.register_room_set(room_id, channels[room_id]["gifemotes_setid"], set); // Load GIF emotes
+
+            if(!enable_gif_emotes)
+                api.unload_set(channels[room_id]["gifemotes_setid"]);
         }).fail(function(data) {
             if (data["status"] === 404) {
                 return;
@@ -267,8 +317,8 @@ var implementBTTVGlobals = function(attempts) {
                 }
 
                 // TODO: Dynamically rework for event emoticons
-                if(emote["regex"] === "SoSnowy" || emote["regex"] === "CandyCane" || emote["regex"] === "ReinDeer" || emote["regex"] === "SantaHat")
-                     xMote["margins"] = "-8px 8px 0px -30px";
+                //if(emote["regex"] === "SoSnowy" || emote["regex"] === "CandyCane" || emote["regex"] === "ReinDeer" || emote["regex"] === "SantaHat")
+                //     xMote["margins"] = "-8px 8px 0px -30px";
 
                 if(isOverrideEmote(emote["regex"]))
                     overrideEmotes.push(xMote);
@@ -281,18 +331,24 @@ var implementBTTVGlobals = function(attempts) {
                 emoticons: globalBTTV
             };
             api.register_global_set(1, set);
+            if(!enable_global_emotes)
+                api.unregister_global_set(1);
 
             set = {
                 emoticons: globalBTTV_GIF,
                 title: "Global Emoticons (GIF)"
             };
             api.register_global_set(2, set);
+            if(!enable_global_emotes || !enable_gif_emotes)
+                api.unregister_global_set(2);
 
             set = {
                 emoticons: overrideEmotes,
                 title: "Global Emoticons (Override)"
             };
             api.register_global_set(3, set);
+            if(!enable_global_emotes || !enable_override_emotes)
+                api.unregister_global_set(3);
 
             global_emotes_loaded = true;
 
