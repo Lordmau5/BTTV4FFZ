@@ -164,8 +164,6 @@ var setupChannelLoading = function() {
 var channelCallback = function(room_id, reg_function, attempts) {
     $.getJSON("https://api.betterttv.net/2/channels/" + room_id)
         .done(function(data) {
-            current_channel = room_id;
-
             var channelBTTV = new Array(),
                 channelBTTV_GIF = new Array(),
                 emotes = data["emotes"];
@@ -201,7 +199,7 @@ var channelCallback = function(room_id, reg_function, attempts) {
                   channelBTTV_GIF.push(xMote);
             }
 
-            if (!channelBTTV.length)
+            if (!channelBTTV.length && !channelBTTV_GIF.length)
                 return;
 
             channels[room_id] = {
@@ -215,7 +213,8 @@ var channelCallback = function(room_id, reg_function, attempts) {
                 title: "Emoticons"
             };
 
-            api.register_room_set(room_id, channels[room_id]["emotes"], set); // Load normal emotes
+            if(channelBTTV.length)
+                api.register_room_set(room_id, channels[room_id]["emotes"], set); // Load normal emotes
 
             set = {
                 emoticons: channelBTTV_GIF,
@@ -254,11 +253,6 @@ var channelCallback = function(room_id, reg_function, attempts) {
                     };
                     img.crossOrigin = "anonymous";
                     img.src = element["urls"][key] + ".png";
-
-                    if(img.height > 0) {
-                        img.src = "";
-                        img.src = element["urls"][key];
-                    }
                 }
             }
 
