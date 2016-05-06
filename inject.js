@@ -1,5 +1,5 @@
 // Version naming: (Main-version).(Sub-version)
-// Version: 1.1.0
+// Version: 1.2.0
 
 /*
     This file is being updated on my server (cdn.lordmau5.com) first before changes to the GitHub repo happen.
@@ -11,15 +11,19 @@
 
 // Global Storage / Settings
 
-var version = "1.1.0";
+var version = "1.2.0";
 
-var api,
+var _initialized,
+
+    api,
     ffz,
-    last_channel_id = 9000,
+    last_emote_set_id = 9000,
     channels = {},
     enable_global_emotes,
     enable_gif_emotes,
-    enable_override_emotes;
+    enable_override_emotes,
+
+    socketClient;
 
 var global_emotes_loaded = false,
     gif_emotes_loaded = false;
@@ -48,13 +52,15 @@ var check_existance = function(attempts) {
             return "https://manage.betterttv.net/emotes/" + emote_id;
         };
 
+        socketClient = new SocketClient();
+
         // Start loading stuff.
-        doSettings();
-        setupChannelLoading();
+        // MOVED TO SOCKET onOpen!
+        //doSettings();
+        //setupChannelLoading();
 
-        if (enable_global_emotes)
-            implementBTTVGlobals();
-
+        //if (enable_global_emotes)
+        //    implementBTTVGlobals();
     }
     else {
         attempts = (attempts || 0) + 1;
@@ -156,12 +162,20 @@ var doSettings = function() {
 };
 
 
-var setupChannelLoading = function() {
+var setupAPIHooks = function() {
     api.register_on_room_callback(channelCallback);
+    api.register_chat_filter(chatFilter);
 };
 
+var chatFilter = function(msg) {
+    if(msg.from === ffz.get_user().login)
+        socketClient.broadcastMe(msg.room);
+};
 
 var channelCallback = function(room_id, reg_function, attempts) {
+    socketClient.joinChannel(room_id);
+    socketClient.broadcastMe(room_id);
+
     $.getJSON("https://api.betterttv.net/2/channels/" + room_id)
         .done(function(data) {
             var channelBTTV = new Array(),
@@ -203,10 +217,10 @@ var channelCallback = function(room_id, reg_function, attempts) {
                 return;
 
             channels[room_id] = {
-                emotes: last_channel_id,
-                gifemotes_setid: last_channel_id + 1
+                emotes: last_emote_set_id,
+                gifemotes_setid: last_emote_set_id + 1
             };
-            last_channel_id += 2;
+            last_emote_set_id += 2;
 
             var set = {
                 emoticons: channelBTTV,
@@ -310,10 +324,6 @@ var implementBTTVGlobals = function(attempts) {
                     };
                 }
 
-                // TODO: Dynamically rework for event emoticons
-                //if(emote["regex"] === "SoSnowy" || emote["regex"] === "CandyCane" || emote["regex"] === "ReinDeer" || emote["regex"] === "SantaHat")
-                //     xMote["margins"] = "-8px 8px 0px -30px";
-
                 if(isOverrideEmote(emote["regex"]))
                     overrideEmotes.push(xMote);
                 else {
@@ -358,6 +368,201 @@ var implementBTTVGlobals = function(attempts) {
         });
 };
 
+/* Attempt on hooking into the BTTV WebSocket servers for BTTV-Pro emotes */
+var bttv_pro_users = {};
+
+BTTVProUser = function(username, emotes_array) {
+    this.username = username;
+    this.emotes_array = emotes_array;
+
+    this.initialize();
+
+    bttv_pro_users[this.username] = this;
+};
+
+BTTVProUser.prototype.loadEmotes = function() {
+    this.emotes_array.forEach(function(emote, index, array) {
+      var xMote = {
+          urls: {
+              1: "https://cdn.betterttv.net/emote/" + emote["id"] + "/1x",
+              2: "https://cdn.betterttv.net/emote/" + emote["id"] + "/2x",
+              4: "https://cdn.betterttv.net/emote/" + emote["id"] + "/3x"
+          },
+          id: emote["id"],
+          name: emote["code"],
+          width: 28,
+          height: 28,
+          owner: {
+              display_name: emote["channel"] || "",
+              name: emote["channel"]
+          },
+          require_spaces: true
+      };
+
+      if(emote["imageType"] === "png")
+          this.emotes.push(xMote);
+
+      if(emote["imageType"] === "gif")
+          this.gif_emotes.push(xMote);
+    }, this);
+
+    // Still emotes
+    var set = {
+        emoticons: this.emotes,
+        title: "Personal Emotes"
+    };
+
+    if(this.emotes.length) {
+        api.load_set(this._id_emotes, set);
+        api.user_add_set(this.username, this._id_emotes);
+    }
+};
+
+BTTVProUser.prototype.initialize = function() {
+    this._id_emotes = this.username + "_images";
+    this.emotes = new Array();
+
+    this.loadEmotes();
+};
+
+var bttv_pro_events = {};
+
+// BetterTTV Pro
+bttv_pro_events.lookup_user = function(subscription) {
+    if (!subscription.pro) return;
+
+    if (subscription.pro && subscription.emotes) {
+        if(subscription.name in bttv_pro_users) {
+            bttv_pro_users[subscription.name].emotes_array = subscription.emotes;
+            bttv_pro_users[subscription.name].loadEmotes();
+        }
+        else {
+            new BTTVProUser(subscription.name, subscription.emotes);
+        }
+    }
+};
+
+SocketClient = function() {
+    this.socket = false;
+    this._lookedUpUsers = [];
+    this._connected = false;
+    this._connecting = false;
+    this._connectAttempts = 1;
+    this._joinedChannels = [];
+    this._events = bttv_pro_events;
+
+    this.connect();
+}
+
+SocketClient.prototype.connect = function() {
+    if (this._connected || this._connecting) return;
+    this._connecting = true;
+
+    api.log('SocketClient: Connecting to Beta BetterTTV Socket Server');
+
+    var _self = this;
+    this.socket = new WebSocket('wss://sockets-beta.betterttv.net/ws');
+
+    this.socket.onopen = function() {
+        api.log('SocketClient: Connected to Beta BetterTTV Socket Server');
+
+        _self._connected = true;
+        _self._connectAttempts = 1;
+
+        if(!_initialized) {
+            doSettings();
+            setupAPIHooks();
+
+            if (enable_global_emotes)
+                implementBTTVGlobals();
+
+            _initialized = true;
+        }
+    };
+
+    this.socket.onerror = function() {
+        api.log('SocketClient: Error from Beta BetterTTV Socket Server');
+
+        _self._connectAttempts++;
+        _self.reconnect();
+    };
+
+    this.socket.onclose = function() {
+        if (!_self._connected || !_self.socket) return;
+
+        api.log('SocketClient: Disconnected from Beta BetterTTV Socket Server');
+
+        _self._connectAttempts++;
+        _self.reconnect();
+    };
+
+    this.socket.onmessage = function(message) {
+        var evt;
+
+        try {
+            evt = JSON.parse(message.data);
+        } catch (e) {
+            debug.log('SocketClient: Error Parsing Message', e);
+        }
+
+        if (!evt || !(evt.name in _self._events)) return;
+
+        api.log('SocketClient: Received Event');
+        api.log(evt);
+
+        _self._events[evt.name](evt.data);
+    };
+};
+
+SocketClient.prototype.reconnect = function() {
+    var _self = this;
+
+    if (this.socket) {
+        try {
+            this.socket.close();
+        } catch (e) {}
+    }
+
+    delete this.socket;
+
+    this._connected = false;
+
+    if (this._connecting === false) return;
+    this._connecting = false;
+
+    setTimeout(function() {
+        _self.connect();
+    }, Math.random() * (Math.pow(2, this._connectAttempts) - 1) * 30000);
+};
+
+SocketClient.prototype.emit = function(evt, data) {
+    if (!this._connected || !this.socket) return;
+
+    this.socket.send(JSON.stringify({
+        name: evt,
+        data: data
+    }));
+};
+
+// Introduce myself
+SocketClient.prototype.broadcastMe = function(channel) {
+    if (!this._connected) return;
+
+    this.emit('broadcast_me', { name: ffz.get_user().login, channel: channel });
+};
+
+SocketClient.prototype.joinChannel = function(channel) {
+    if (!this._connected) return;
+
+    if (!channel.length) return;
+
+    if (this._joinedChannels[channel]) {
+        this.emit('part_channel', { name: channel });
+    }
+
+    this.emit('join_channel', { name: channel });
+    this._joinedChannels[channel] = true;
+};
 
 // Finally, load.
 check_existance();
