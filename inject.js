@@ -11,7 +11,7 @@
 
 // Global Storage / Settings
 
-var version = "1.2.0";
+var version = "1.2.1";
 
 var _initialized,
 
@@ -461,7 +461,7 @@ SocketClient.prototype.connect = function() {
     api.log('SocketClient: Connecting to Beta BetterTTV Socket Server');
 
     var _self = this;
-    this.socket = new WebSocket('wss://sockets-beta.betterttv.net/ws');
+    this.socket = new WebSocket('wss://sockets.betterttv.net/ws');
 
     this.socket.onopen = function() {
         api.log('SocketClient: Connected to Beta BetterTTV Socket Server');
