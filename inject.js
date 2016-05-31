@@ -168,8 +168,8 @@ var setupAPIHooks = function() {
 };
 
 var chatFilter = function(msg) {
-    if(msg.from === ffz.get_user().login)
-        socketClient.broadcastMe(msg.room);
+    //if(msg.from === ffz.get_user().login)
+    //    socketClient.broadcastMe(msg.room);
 };
 
 var channelCallback = function(room_id, reg_function, attempts) {
@@ -548,7 +548,7 @@ SocketClient.prototype.emit = function(evt, data) {
 SocketClient.prototype.broadcastMe = function(channel) {
     if (!this._connected) return;
 
-    this.emit('broadcast_me', { name: ffz.get_user().login, channel: channel });
+    //this.emit('broadcast_me', { name: ffz.get_user().login, channel: channel });
 };
 
 SocketClient.prototype.joinChannel = function(channel) {
