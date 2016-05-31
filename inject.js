@@ -1,5 +1,5 @@
 // Version naming: (Main-version).(Sub-version)
-// Version: 1.2.0
+// Version: 1.2.1
 
 /*
     This file is being updated on my server (cdn.lordmau5.com) first before changes to the GitHub repo happen.
@@ -164,12 +164,14 @@ var doSettings = function() {
 
 var setupAPIHooks = function() {
     api.register_on_room_callback(channelCallback);
-    api.register_chat_filter(chatFilter);
+    if(ffz.get_user() !== undefined) {
+      api.register_chat_filter(chatFilter);
+    }
 };
 
 var chatFilter = function(msg) {
-    //if(msg.from === ffz.get_user().login)
-    //    socketClient.broadcastMe(msg.room);
+    if(msg.from === ffz.get_user().login)
+        socketClient.broadcastMe(msg.room);
 };
 
 var channelCallback = function(room_id, reg_function, attempts) {
@@ -455,6 +457,7 @@ SocketClient = function() {
 }
 
 SocketClient.prototype.connect = function() {
+    if (ffz.get_user() === undefined) return;
     if (this._connected || this._connecting) return;
     this._connecting = true;
 
@@ -548,7 +551,7 @@ SocketClient.prototype.emit = function(evt, data) {
 SocketClient.prototype.broadcastMe = function(channel) {
     if (!this._connected) return;
 
-    //this.emit('broadcast_me', { name: ffz.get_user().login, channel: channel });
+    this.emit('broadcast_me', { name: ffz.get_user().login, channel: channel });
 };
 
 SocketClient.prototype.joinChannel = function(channel) {
