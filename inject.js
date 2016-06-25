@@ -393,8 +393,8 @@ var implementBTTVBadges = function(attempts) {
         name: "bttv4ffz",
         title: "BTTV4FFZ Developer",
         image: "https://cdn.lordmau5.com/Mau5Badge.png",
-        color: "#49acff",
-        no_invert: true
+        alpha_image: "https://cdn.lordmau5.com/Mau5Badge_Alpha.png",
+        color: "#49acff"
     });
     api.user_add_badge("lordmau5", 20, "bttv4ffz");
 
