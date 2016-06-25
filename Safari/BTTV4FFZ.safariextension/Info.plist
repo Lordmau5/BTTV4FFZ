@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Author</key>
+	<string>lordmau5.com/bttv4ffz/</string>
+	<key>Builder Version</key>
+	<string>11601.6.17</string>
+	<key>CFBundleDisplayName</key>
+	<string>BTTV4FFZ</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.rennsport.bttv4ffz</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.0</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>Chrome</key>
+	<dict>
+		<key>Database Quota</key>
+		<integer>0</integer>
+	</dict>
+	<key>Companion Bundle Identifier</key>
+	<array/>
+	<key>Content</key>
+	<dict>
+		<key>Blacklist</key>
+		<array>
+			<string>https://api.twitch.tv/*</string>
+			<string>http://api.twitch.tv/*</string>
+		</array>
+		<key>Scripts</key>
+		<dict>
+			<key>End</key>
+			<array>
+				<string>script.js</string>
+			</array>
+		</dict>
+		<key>Whitelist</key>
+		<array>
+			<string>https://www.twitch.tv/*</string>
+			<string>http://www.twitch.tv/*</string>
+		</array>
+	</dict>
+	<key>Description</key>
+	<string>Add the BTTV emotes on-top of FFZ!</string>
+	<key>DeveloperIdentifier</key>
+	<string>LBHS782YH3</string>
+	<key>ExtensionInfoDictionaryVersion</key>
+	<string>1.0</string>
+	<key>Permissions</key>
+	<dict>
+		<key>Website Access</key>
+		<dict>
+			<key>Include Secure Pages</key>
+			<true/>
+			<key>Level</key>
+			<string>All</string>
+		</dict>
+	</dict>
+	<key>Website</key>
+	<string>https://lordmau5.com/bttv4ffz/</string>
+</dict>
+</plist>
