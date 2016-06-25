@@ -1,5 +1,5 @@
 // Version naming: (Main-version).(Sub-version)
-// Version: 1.2.1
+// Version: 1.3.0
 
 /*
     This file is being updated on my server (cdn.lordmau5.com) first before changes to the GitHub repo happen.
@@ -11,7 +11,7 @@
 
 // Global Storage / Settings
 
-var version = "1.2.1";
+var version = "1.3.0";
 
 var _initialized,
 
@@ -22,6 +22,7 @@ var _initialized,
     enable_global_emotes,
     enable_gif_emotes,
     enable_override_emotes,
+    enable_pro_emotes,
 
     socketClient;
 
@@ -53,14 +54,6 @@ var check_existance = function(attempts) {
         };
 
         socketClient = new SocketClient();
-
-        // Start loading stuff.
-        // MOVED TO SOCKET onOpen!
-        //doSettings();
-        //setupChannelLoading();
-
-        //if (enable_global_emotes)
-        //    implementBTTVGlobals();
     }
     else {
         attempts = (attempts || 0) + 1;
@@ -159,6 +152,25 @@ var doSettings = function() {
     };
 
     enable_override_emotes = ffz.settings.get("bttv_enable_override_emotes");
+
+    FrankerFaceZ.settings_info.bttv_enable_pro_emotes = {
+        type: "boolean",
+        value: true,
+        category: "BTTV4FFZ",
+        name: "Enable BTTV Pro Emotes",
+        help: "Enable this to show Pro emotes from other users.",
+        on_update: function(enabled) {
+            if(!enabled) {
+                for(user in bttv_pro_users) {
+                    api.unload_set(user._id_emotes);
+                }
+            }
+
+            enable_pro_emotes = enabled;
+        }
+    };
+
+    enable_pro_emotes = ffz.settings.get("bttv_enable_pro_emotes");
 };
 
 
@@ -170,13 +182,15 @@ var setupAPIHooks = function() {
 };
 
 var chatFilter = function(msg) {
-    if(msg.from === ffz.get_user().login)
+    if(msg.from === ffz.get_user().login && enable_pro_emotes)
         socketClient.broadcastMe(msg.room);
 };
 
+
 var channelCallback = function(room_id, reg_function, attempts) {
     socketClient.joinChannel(room_id);
-    socketClient.broadcastMe(room_id);
+    if(enable_pro_emotes)
+        socketClient.broadcastMe(room_id);
 
     $.getJSON("https://api.betterttv.net/2/channels/" + room_id)
         .done(function(data) {
@@ -184,7 +198,8 @@ var channelCallback = function(room_id, reg_function, attempts) {
                 channelBTTV_GIF = new Array(),
                 emotes = data["emotes"];
 
-            for(var i = 0; i < emotes.length; i++) {
+            var i = emotes.length;
+            while(i--) {
             	var req_spaces = /[^A-Za-z0-9]/.test(emotes[i]["code"]);
 
                 var emote = emotes[i],
@@ -242,9 +257,12 @@ var channelCallback = function(room_id, reg_function, attempts) {
 
             var stillEmotes = tempStillEmotes["emoticons"];
 
-            for(var i=0; i<stillEmotes.length; i++) {
+            i = stillEmotes.length;
+            while(i--) {
                 var element = stillEmotes[i];
-                for(var key in element["urls"]) {
+                var j = element["urls"].length;
+                while(j--) {
+                    var key = element["urls"][i];
                     var img = new Image();
 
                     img.onload = (function(array_index, size) {
@@ -289,7 +307,6 @@ var channelCallback = function(room_id, reg_function, attempts) {
         });
 };
 
-
 var implementBTTVGlobals = function(attempts) {
     $.getJSON("https://api.betterttv.net/emotes")
         .done(function(data) {
@@ -299,7 +316,8 @@ var implementBTTVGlobals = function(attempts) {
 
                 emotes = data["emotes"];
 
-            for(var i = 0; i < emotes.length; i++) {
+            var i = emotes.length;
+            while(i--) {
             	var req_spaces = /[^A-Za-z0-9]/.test(emotes[i]["regex"]);
 
                 var emote = emotes[i],
@@ -370,6 +388,60 @@ var implementBTTVGlobals = function(attempts) {
         });
 };
 
+var implementBTTVBadges = function(attempts) {
+    api.add_badge("bttv4ffz", {
+        name: "bttv4ffz",
+        title: "BTTV4FFZ Developer",
+        image: "https://cdn.lordmau5.com/Mau5Badge.png",
+        color: "#49acff",
+        no_invert: true
+    });
+    api.user_add_badge("lordmau5", 20, "bttv4ffz");
+
+    $.getJSON("https://api.betterttv.net/2/badges")
+    .done(function(data) {
+        var types = new Array(),
+            badges = new Array(),
+
+            _types = data["types"],
+            _users = data["badges"];
+
+        var i = _types.length;
+        while(i--) {
+            var _type = _types[i];
+
+            var type = {
+                name: _type.name,
+                title: _type.description,
+                image: _type.svg,
+                no_invert: true
+            };
+
+            types[type.name] = type;
+            api.add_badge(type.name, type);
+        }
+
+        i = _users.length;
+        while(i--) {
+            var _user = _users[i];
+
+            if(types[_user.type] !== undefined) {
+                api.log("Adding badge '" + _user.type + "' for user '" + _user.name + "'.");
+                api.user_add_badge(_user.name, 21, _user.type);
+            }
+        }
+    }).fail(function(data) {
+        if (data["status"] === 404)
+            return;
+
+        attempts = (attempts || 0) + 1;
+        if (attempts < 12) {
+            api.log("Failed to fetch BTTV badges emotes. Trying again in 5 seconds.");
+            return setTimeout(implementBTTVBadges.bind(this, attempts), 5000);
+        }
+    });
+};
+
 /* Attempt on hooking into the BTTV WebSocket servers for BTTV-Pro emotes */
 var bttv_pro_users = {};
 
@@ -408,7 +480,6 @@ BTTVProUser.prototype.loadEmotes = function() {
           this.gif_emotes.push(xMote);
     }, this);
 
-    // Still emotes
     var set = {
         emoticons: this.emotes,
         title: "Personal Emotes"
@@ -431,7 +502,7 @@ var bttv_pro_events = {};
 
 // BetterTTV Pro
 bttv_pro_events.lookup_user = function(subscription) {
-    if (!subscription.pro) return;
+    if (!subscription.pro || !enable_pro_emotes) return;
 
     if (subscription.pro && subscription.emotes) {
         if(subscription.name in bttv_pro_users) {
@@ -458,7 +529,7 @@ SocketClient = function() {
 
 SocketClient.prototype.connect = function() {
     if (ffz.get_user() === undefined) return;
-    if (this._connected || this._connecting) return;
+    if (this._connected || this._connecting) return;1
     this._connecting = true;
 
     api.log('SocketClient: Connecting to Beta BetterTTV Socket Server');
@@ -476,6 +547,7 @@ SocketClient.prototype.connect = function() {
             doSettings();
             setupAPIHooks();
 
+            implementBTTVBadges();
             if (enable_global_emotes)
                 implementBTTVGlobals();
 
