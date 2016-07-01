@@ -1,5 +1,5 @@
 // Version naming: (Main-version).(Sub-version)
-// Version: 1.3.0
+// Version: 1.3.2
 
 /*
     This file is being updated on my server (cdn.lordmau5.com) first before changes to the GitHub repo happen.
@@ -11,7 +11,7 @@
 
 // Global Storage / Settings
 
-var version = "1.3.0";
+var version = "1.3.2";
 
 var _initialized,
 
@@ -53,7 +53,16 @@ var check_existance = function(attempts) {
             return "https://manage.betterttv.net/emotes/" + emote_id;
         };
 
-        socketClient = new SocketClient();
+        doSettings();
+        setupAPIHooks();
+
+        implementBTTVBadges();
+        if (enable_global_emotes)
+            implementBTTVGlobals();
+
+        if(enable_pro_emotes) {
+            socketClient = new SocketClient();
+        }
     }
     else {
         attempts = (attempts || 0) + 1;
@@ -109,7 +118,7 @@ var doSettings = function() {
         on_update: function(enabled) {
             if (enabled) {
                 if(enable_global_emotes)
-                  api.register_global_set(2);
+                    api.register_global_set(2);
 
                 for(var name in channels) {
                     api.register_room_set(name, channels[name]["gifemotes_setid"], channels[name]["gifemotes"]);
@@ -141,7 +150,7 @@ var doSettings = function() {
         on_update: function(enabled) {
             if (enabled) {
                 if(enable_global_emotes)
-                  api.register_global_set(3);
+                    api.register_global_set(3);
             }
             else {
                 api.unregister_global_set(3);
@@ -158,7 +167,7 @@ var doSettings = function() {
         value: true,
         category: "BTTV4FFZ",
         name: "Enable BTTV Pro Emotes",
-        help: "Enable this to show Pro emotes from other users.",
+        help: "Enable this to show Pro emotes from other users. (Requires refresh!)",
         on_update: function(enabled) {
             if(!enabled) {
                 for(user in bttv_pro_users) {
@@ -176,21 +185,23 @@ var doSettings = function() {
 
 var setupAPIHooks = function() {
     api.register_on_room_callback(channelCallback);
-    if(ffz.get_user() !== undefined) {
-      api.register_chat_filter(chatFilter);
+    if(ffz.get_user()) {
+        api.register_chat_filter(chatFilter);
     }
 };
 
 var chatFilter = function(msg) {
-    if(msg.from === ffz.get_user().login && enable_pro_emotes)
+    if(enable_pro_emotes && ffz.get_user() && msg.from === ffz.get_user().login) {
         socketClient.broadcastMe(msg.room);
+    }
 };
 
 
 var channelCallback = function(room_id, reg_function, attempts) {
-    socketClient.joinChannel(room_id);
-    if(enable_pro_emotes)
+    if(enable_pro_emotes) {
+        socketClient.joinChannel(room_id);
         socketClient.broadcastMe(room_id);
+    }
 
     $.getJSON("https://api.betterttv.net/2/channels/" + room_id)
         .done(function(data) {
@@ -227,7 +238,7 @@ var channelCallback = function(room_id, reg_function, attempts) {
                     channelBTTV.push(xMote);
 
                 if (emote["imageType"] === "gif")
-                  channelBTTV_GIF.push(xMote);
+                    channelBTTV_GIF.push(xMote);
             }
 
             if (!channelBTTV.length && !channelBTTV_GIF.length)
@@ -529,7 +540,7 @@ SocketClient = function() {
 
 SocketClient.prototype.connect = function() {
     if (ffz.get_user() === undefined) return;
-    if (this._connected || this._connecting) return;1
+    if (this._connected || this._connecting) return;
     this._connecting = true;
 
     api.log('SocketClient: Connecting to Beta BetterTTV Socket Server');
@@ -542,17 +553,6 @@ SocketClient.prototype.connect = function() {
 
         _self._connected = true;
         _self._connectAttempts = 1;
-
-        if(!_initialized) {
-            doSettings();
-            setupAPIHooks();
-
-            implementBTTVBadges();
-            if (enable_global_emotes)
-                implementBTTVGlobals();
-
-            _initialized = true;
-        }
     };
 
     this.socket.onerror = function() {
@@ -576,7 +576,8 @@ SocketClient.prototype.connect = function() {
 
         try {
             evt = JSON.parse(message.data);
-        } catch (e) {
+        }
+        catch (e) {
             debug.log('SocketClient: Error Parsing Message', e);
         }
 
@@ -592,15 +593,7 @@ SocketClient.prototype.connect = function() {
 SocketClient.prototype.reconnect = function() {
     var _self = this;
 
-    if (this.socket) {
-        try {
-            this.socket.close();
-        } catch (e) {}
-    }
-
-    delete this.socket;
-
-    this._connected = false;
+    this.disconnect();
 
     if (this._connecting === false) return;
     this._connecting = false;
@@ -608,6 +601,21 @@ SocketClient.prototype.reconnect = function() {
     setTimeout(function() {
         _self.connect();
     }, Math.random() * (Math.pow(2, this._connectAttempts) - 1) * 30000);
+};
+
+SocketClient.prototype.disconnect = function() {
+    var _self = this;
+
+    if (this.socket) {
+        try {
+            this.socket.close();
+        }
+        catch (e) {}
+    }
+
+    delete this.socket;
+
+    this._connected = false;
 };
 
 SocketClient.prototype.emit = function(evt, data) {
@@ -622,6 +630,7 @@ SocketClient.prototype.emit = function(evt, data) {
 // Introduce myself
 SocketClient.prototype.broadcastMe = function(channel) {
     if (!this._connected) return;
+    if (!ffz.get_user()) return;
 
     this.emit('broadcast_me', { name: ffz.get_user().login, channel: channel });
 };
