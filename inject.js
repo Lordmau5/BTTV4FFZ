@@ -24,7 +24,7 @@ var _initialized,
     enable_override_emotes,
     enable_pro_emotes,
 
-    socketClient = new SocketClient();
+    socketClient;
 
 var global_emotes_loaded = false,
     gif_emotes_loaded = false;
@@ -45,6 +45,7 @@ var check_existance = function(attempts) {
         // Register with FFZ.
         ffz = FrankerFaceZ.get();
         api = ffz.api("BetterTTV", "https://cdn.betterttv.net/tags/developer.png", version);
+        socketClient = new SocketClient();
 
         api.log("Injected successfully.");
 
