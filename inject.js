@@ -1,5 +1,5 @@
 // Version naming: (Main-version).(Sub-version)
-// Version: 1.3.2
+// Version: 1.3.3
 
 /*
     This file is being updated on my server (cdn.lordmau5.com) first before changes to the GitHub repo happen.
@@ -11,7 +11,7 @@
 
 // Global Storage / Settings
 
-var version = "1.3.2";
+var version = "1.3.3";
 
 var _initialized,
 
@@ -24,7 +24,7 @@ var _initialized,
     enable_override_emotes,
     enable_pro_emotes,
 
-    socketClient;
+    socketClient = new SocketClient();
 
 var global_emotes_loaded = false,
     gif_emotes_loaded = false;
@@ -61,7 +61,7 @@ var check_existance = function(attempts) {
             implementBTTVGlobals();
 
         if(enable_pro_emotes) {
-            socketClient = new SocketClient();
+            socketClient.connect();
         }
     }
     else {
@@ -534,8 +534,6 @@ SocketClient = function() {
     this._connectAttempts = 1;
     this._joinedChannels = [];
     this._events = bttv_pro_events;
-
-    this.connect();
 }
 
 SocketClient.prototype.connect = function() {
