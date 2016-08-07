@@ -1,5 +1,5 @@
 // Version naming: (Main-version).(Sub-version)
-// Version: 1.3.3
+// Version: 1.3.4
 
 /*
     This file is being updated on my server (cdn.lordmau5.com) first before changes to the GitHub repo happen.
@@ -11,7 +11,7 @@
 
 // Global Storage / Settings
 
-var version = "1.3.3";
+var version = "1.3.4";
 
 var _initialized,
 
@@ -70,7 +70,7 @@ var check_existance = function(attempts) {
         if (attempts < 60)
             return setTimeout(check_existance.bind(this, attempts), 1000);
 
-        console.log("BTTV4FFZ: Could not find FFZ. Injection unsuccessful.");
+        console.log("Could not find FFZ. Injection unsuccessful.");
     }
 };
 
@@ -186,9 +186,7 @@ var doSettings = function() {
 
 var setupAPIHooks = function() {
     api.register_on_room_callback(channelCallback);
-    if(ffz.get_user()) {
-        api.register_chat_filter(chatFilter);
-    }
+    api.register_chat_filter(chatFilter);
 };
 
 var chatFilter = function(msg) {
@@ -201,7 +199,6 @@ var chatFilter = function(msg) {
 var channelCallback = function(room_id, reg_function, attempts) {
     if(enable_pro_emotes) {
         socketClient.joinChannel(room_id);
-        socketClient.broadcastMe(room_id);
     }
 
     $.getJSON("https://api.betterttv.net/2/channels/" + room_id)
@@ -534,6 +531,7 @@ SocketClient = function() {
     this._connecting = false;
     this._connectAttempts = 1;
     this._joinedChannels = [];
+    this._connectionBuffer = [];
     this._events = bttv_pro_events;
 }
 
@@ -552,6 +550,14 @@ SocketClient.prototype.connect = function() {
 
         _self._connected = true;
         _self._connectAttempts = 1;
+
+        if(_self._connectionBuffer.length > 0) {
+          for(var channel in _self._connectionBuffer) {
+            _self.joinChannel(channel);
+            _self.broadcastMe(channel);
+          }
+          _self._connectionBuffer = [];
+        }
     };
 
     this.socket.onerror = function() {
@@ -635,7 +641,11 @@ SocketClient.prototype.broadcastMe = function(channel) {
 };
 
 SocketClient.prototype.joinChannel = function(channel) {
-    if (!this._connected) return;
+    if (!this._connected) {
+      if (!this._connectionBuffer.includes(channel))
+        this._connectionBuffer.push(channel);
+      return;
+    }
 
     if (!channel.length) return;
 
