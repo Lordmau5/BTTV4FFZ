@@ -1,6 +1,3 @@
-// Version naming: (Main-version).(Sub-version)
-// Version: 1.3.4
-
 /*
     This file is being updated on my server (cdn.lordmau5.com) first before changes to the GitHub repo happen.
     It will not be embedded in the addon anymore.
@@ -11,7 +8,7 @@
 
 // Global Storage / Settings
 
-var version = "1.3.4";
+var version = "1.3.5";
 
 var _initialized,
 
@@ -121,14 +118,18 @@ var doSettings = function() {
                 if(enable_global_emotes)
                     api.register_global_set(2);
 
-                for(var name in channels) {
+                var i = channels.length;
+                while(i--) {
+                    var name = channels[i];
                     api.register_room_set(name, channels[name]["gifemotes_setid"], channels[name]["gifemotes"]);
                 }
             }
             else {
                 api.unregister_global_set(2);
 
-                for(var name in channels) {
+                var i = channels.length;
+                while(i--) {
+                    var name = channels[i];
                     if(channels[name]["gifemotes_still"])
                         api.register_room_set(name, channels[name]["gifemotes_setid"], channels[name]["gifemotes_still"]);
                     else
@@ -171,7 +172,9 @@ var doSettings = function() {
         help: "Enable this to show Pro emotes from other users. (Requires refresh!)",
         on_update: function(enabled) {
             if(!enabled) {
-                for(user in bttv_pro_users) {
+                var i = bttv_pro_users.length;
+                while(i--) {
+                    var user = bttv_pro_users[i];
                     api.unload_set(user._id_emotes);
                 }
             }
@@ -552,7 +555,9 @@ SocketClient.prototype.connect = function() {
         _self._connectAttempts = 1;
 
         if(_self._connectionBuffer.length > 0) {
-          for(var channel in _self._connectionBuffer) {
+          var i = _self._connectionBuffer.length;
+          while(i--) {
+            var channel = _self._connectionBuffer[i];
             _self.joinChannel(channel);
             _self.broadcastMe(channel);
           }
