@@ -8,7 +8,7 @@
 
 // Global Storage / Settings
 
-var version = "1.3.5";
+var version = "1.3.6";
 
 var _initialized,
 
@@ -184,6 +184,27 @@ var doSettings = function() {
     };
 
     enable_pro_emotes = ffz.settings.get("bttv_enable_pro_emotes");
+
+    FrankerFaceZ.settings_info.bttv_show_emotes_in_menu = {
+        type: "boolean",
+        value: true,
+        category: "BTTV4FFZ",
+        name: "Show emotes in Emoticon Menu",
+        help: "Enable this to show the emotes in the Emoticon Menu (you can still enter the emotes manually when this is disabled)",
+        on_update: function(enabled) {
+            api.emote_sets[1].hidden = !enabled;
+            api.emote_sets[2].hidden = !enabled;
+            api.emote_sets[3].hidden = !enabled;
+
+            for(var name in channels) {
+                api.log(name);
+                api.emote_sets[channels[name]["emotes"]].hidden = !enabled;
+                api.emote_sets[channels[name]["gifemotes_setid"]].hidden = !enabled;
+            }
+        }
+    };
+
+    show_emotes_in_menu = ffz.settings.get("bttv_show_emotes_in_menu");
 };
 
 
@@ -256,8 +277,10 @@ var channelCallback = function(room_id, reg_function, attempts) {
                 title: "Emoticons"
             };
 
-            if(channelBTTV.length)
+            if(channelBTTV.length) {
                 api.register_room_set(room_id, channels[room_id]["emotes"], set); // Load normal emotes
+                api.emote_sets[channels[room_id]["emotes"]].hidden = !show_emotes_in_menu;
+            }
 
             set = {
                 emoticons: channelBTTV_GIF,
@@ -293,6 +316,7 @@ var channelCallback = function(room_id, reg_function, attempts) {
                         stillEmotes[array_index]["urls"][size] = canvas.toDataURL();
 
                         api.register_room_set(room_id, channels[room_id]["gifemotes_setid"], channels[room_id]["gifemotes_still"]); // Load static GIF emotes
+                        api.emote_sets[channels[room_id]["gifemotes_setid"]].hidden = !show_emotes_in_menu;
                     }).bind(img, i, key);
                     img.onerror = function(errorMsg, url, lineNumber, column, errorObj) {
                       console.log("Couldn't load.");
@@ -303,6 +327,7 @@ var channelCallback = function(room_id, reg_function, attempts) {
             }
 
             api.register_room_set(room_id, channels[room_id]["gifemotes_setid"], set); // Load GIF emotes
+            api.emote_sets[channels[room_id]["gifemotes_setid"]].hidden = !show_emotes_in_menu;
 
             if(!enable_gif_emotes)
                 api.unload_set(channels[room_id]["gifemotes_setid"]);
@@ -369,6 +394,7 @@ var implementBTTVGlobals = function(attempts) {
             api.register_global_set(1, set);
             if(!enable_global_emotes)
                 api.unregister_global_set(1);
+            api.emote_sets[1].hidden = !show_emotes_in_menu;
 
             set = {
                 emoticons: globalBTTV_GIF,
@@ -377,6 +403,7 @@ var implementBTTVGlobals = function(attempts) {
             api.register_global_set(2, set);
             if(!enable_global_emotes || !enable_gif_emotes)
                 api.unregister_global_set(2);
+            api.emote_sets[2].hidden = !show_emotes_in_menu;
 
             set = {
                 emoticons: overrideEmotes,
@@ -385,6 +412,7 @@ var implementBTTVGlobals = function(attempts) {
             api.register_global_set(3, set);
             if(!enable_global_emotes || !enable_override_emotes)
                 api.unregister_global_set(3);
+            api.emote_sets[3].hidden = !show_emotes_in_menu;
 
             global_emotes_loaded = true;
 
