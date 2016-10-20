@@ -8,7 +8,7 @@
 
 // Global Storage / Settings
 
-var version = "1.3.6";
+var version = "1.3.8";
 
 var _initialized,
 
@@ -41,6 +41,12 @@ var check_existance = function(attempts) {
     if (window.FrankerFaceZ !== undefined && window.jQuery !== undefined && window.App !== undefined) {
         // Register with FFZ.
         ffz = FrankerFaceZ.get();
+
+        // Check for BTTV
+        if (ffz.has_bttv) {
+            console.log("BTTV was found. BTTV4FFZ will not work in combination with it.");
+            return;
+        }
         api = ffz.api("BetterTTV", "https://cdn.betterttv.net/tags/developer.png", version);
         socketClient = new SocketClient();
 
@@ -209,8 +215,10 @@ var doSettings = function() {
 
 
 var setupAPIHooks = function() {
-    api.register_on_room_callback(channelCallback);
-    api.register_chat_filter(chatFilter);
+    api.on('room-add', channelCallback);
+    api.on('room-message', chatFilter);
+
+    api.iterate_rooms();
 };
 
 var chatFilter = function(msg) {
@@ -226,206 +234,206 @@ var channelCallback = function(room_id, reg_function, attempts) {
     }
 
     $.getJSON("https://api.betterttv.net/2/channels/" + room_id)
-        .done(function(data) {
-            var channelBTTV = new Array(),
-                channelBTTV_GIF = new Array(),
-                emotes = data["emotes"];
+    .done(function(data) {
+        var channelBTTV = new Array(),
+            channelBTTV_GIF = new Array(),
+            emotes = data["emotes"];
 
-            var i = emotes.length;
-            while(i--) {
-            	var req_spaces = /[^A-Za-z0-9]/.test(emotes[i]["code"]);
+        var i = emotes.length;
+        while(i--) {
+        	var req_spaces = /[^A-Za-z0-9]/.test(emotes[i]["code"]);
 
-                var emote = emotes[i],
-                    id = emote["id"],
+            var emote = emotes[i],
+                id = emote["id"],
 
-                    xMote = {
-                        urls: {
-                            1: "https://cdn.betterttv.net/emote/" + id + "/1x",
-                            2: "https://cdn.betterttv.net/emote/" + id + "/2x",
-                            4: "https://cdn.betterttv.net/emote/" + id + "/3x"
-                        },
-                        id: id,
-                        name: emote["code"],
-                        width: 28,
-                        height: 28,
-                        owner: {
-                            display_name: emote["channel"] || room_id,
-                            name: emote["channel"]
-                        },
-                        require_spaces: req_spaces
-                    };
+                xMote = {
+                    urls: {
+                        1: "https://cdn.betterttv.net/emote/" + id + "/1x",
+                        2: "https://cdn.betterttv.net/emote/" + id + "/2x",
+                        4: "https://cdn.betterttv.net/emote/" + id + "/3x"
+                    },
+                    id: id,
+                    name: emote["code"],
+                    width: 28,
+                    height: 28,
+                    owner: {
+                        display_name: emote["channel"] || room_id,
+                        name: emote["channel"]
+                    },
+                    require_spaces: req_spaces
+                };
 
 
-                if (emote["imageType"] === "png")
-                    channelBTTV.push(xMote);
+            if (emote["imageType"] === "png")
+                channelBTTV.push(xMote);
 
-                if (emote["imageType"] === "gif")
-                    channelBTTV_GIF.push(xMote);
+            if (emote["imageType"] === "gif")
+                channelBTTV_GIF.push(xMote);
+        }
+
+        if (!channelBTTV.length && !channelBTTV_GIF.length)
+            return;
+
+        channels[room_id] = {
+            emotes: last_emote_set_id,
+            gifemotes_setid: last_emote_set_id + 1
+        };
+        last_emote_set_id += 2;
+
+        var set = {
+            emoticons: channelBTTV,
+            title: "Emoticons"
+        };
+
+        if(channelBTTV.length) {
+            api.register_room_set(room_id, channels[room_id]["emotes"], set); // Load normal emotes
+            api.emote_sets[channels[room_id]["emotes"]].hidden = !show_emotes_in_menu;
+        }
+
+        set = {
+            emoticons: channelBTTV_GIF,
+            title: "Emoticons (GIF)"
+        };
+
+        channels[room_id]["gifemotes"] = jQuery.extend(true, {}, set);
+        var tempStillEmotes = jQuery.extend(true, {}, set);
+
+        var stillEmotes = tempStillEmotes["emoticons"];
+
+        i = stillEmotes.length;
+        while(i--) {
+            var element = stillEmotes[i];
+            var j = element["urls"].length;
+            while(j--) {
+                var key = element["urls"][i];
+                var img = new Image();
+
+                img.onload = (function(array_index, size) {
+                    var canvas = document.createElement("canvas");
+                    var ctx = canvas.getContext("2d");
+
+                    canvas.width = this.width;
+                    canvas.height = this.height;
+
+                    ctx.drawImage(this, 0, 0);
+
+                    if(!channels[room_id]["gifemotes_still"]) {
+                        channels[room_id]["gifemotes_still"] = tempStillEmotes;
+                    }
+
+                    stillEmotes[array_index]["urls"][size] = canvas.toDataURL();
+
+                    api.register_room_set(room_id, channels[room_id]["gifemotes_setid"], channels[room_id]["gifemotes_still"]); // Load static GIF emotes
+                    api.emote_sets[channels[room_id]["gifemotes_setid"]].hidden = !show_emotes_in_menu;
+                }).bind(img, i, key);
+                img.onerror = function(errorMsg, url, lineNumber, column, errorObj) {
+                  console.log("Couldn't load.");
+                };
+                img.crossOrigin = "anonymous";
+                img.src = element["urls"][key] + ".png";
             }
+        }
 
-            if (!channelBTTV.length && !channelBTTV_GIF.length)
-                return;
+        api.register_room_set(room_id, channels[room_id]["gifemotes_setid"], set); // Load GIF emotes
+        api.emote_sets[channels[room_id]["gifemotes_setid"]].hidden = !show_emotes_in_menu;
 
-            channels[room_id] = {
-                emotes: last_emote_set_id,
-                gifemotes_setid: last_emote_set_id + 1
-            };
-            last_emote_set_id += 2;
+        if(!enable_gif_emotes)
+            api.unload_set(channels[room_id]["gifemotes_setid"]);
+    }).fail(function(data) {
+        if (data["status"] === 404) {
+            return;
+        }
 
-            var set = {
-                emoticons: channelBTTV,
-                title: "Emoticons"
-            };
-
-            if(channelBTTV.length) {
-                api.register_room_set(room_id, channels[room_id]["emotes"], set); // Load normal emotes
-                api.emote_sets[channels[room_id]["emotes"]].hidden = !show_emotes_in_menu;
-            }
-
-            set = {
-                emoticons: channelBTTV_GIF,
-                title: "Emoticons (GIF)"
-            };
-
-            channels[room_id]["gifemotes"] = jQuery.extend(true, {}, set);
-            var tempStillEmotes = jQuery.extend(true, {}, set);
-
-            var stillEmotes = tempStillEmotes["emoticons"];
-
-            i = stillEmotes.length;
-            while(i--) {
-                var element = stillEmotes[i];
-                var j = element["urls"].length;
-                while(j--) {
-                    var key = element["urls"][i];
-                    var img = new Image();
-
-                    img.onload = (function(array_index, size) {
-                        var canvas = document.createElement("canvas");
-                        var ctx = canvas.getContext("2d");
-
-                        canvas.width = this.width;
-                        canvas.height = this.height;
-
-                        ctx.drawImage(this, 0, 0);
-
-                        if(!channels[room_id]["gifemotes_still"]) {
-                            channels[room_id]["gifemotes_still"] = tempStillEmotes;
-                        }
-
-                        stillEmotes[array_index]["urls"][size] = canvas.toDataURL();
-
-                        api.register_room_set(room_id, channels[room_id]["gifemotes_setid"], channels[room_id]["gifemotes_still"]); // Load static GIF emotes
-                        api.emote_sets[channels[room_id]["gifemotes_setid"]].hidden = !show_emotes_in_menu;
-                    }).bind(img, i, key);
-                    img.onerror = function(errorMsg, url, lineNumber, column, errorObj) {
-                      console.log("Couldn't load.");
-                    };
-                    img.crossOrigin = "anonymous";
-                    img.src = element["urls"][key] + ".png";
-                }
-            }
-
-            api.register_room_set(room_id, channels[room_id]["gifemotes_setid"], set); // Load GIF emotes
-            api.emote_sets[channels[room_id]["gifemotes_setid"]].hidden = !show_emotes_in_menu;
-
-            if(!enable_gif_emotes)
-                api.unload_set(channels[room_id]["gifemotes_setid"]);
-        }).fail(function(data) {
-            if (data["status"] === 404) {
-                return;
-            }
-
-            attempts = (attempts || 0) + 1;
-            if (attempts < 12) {
-                api.log("Failed to fetch BTTV channel emotes. Trying again in 5 seconds.");
-                return setTimeout(channelCallback.bind(this, room_id, reg_function, attempts), 5000);
-            }
-        });
+        attempts = (attempts || 0) + 1;
+        if (attempts < 12) {
+            api.log("Failed to fetch BTTV channel emotes. Trying again in 5 seconds.");
+            return setTimeout(channelCallback.bind(this, room_id, reg_function, attempts), 5000);
+        }
+    });
 };
 
 var implementBTTVGlobals = function(attempts) {
     $.getJSON("https://api.betterttv.net/emotes")
-        .done(function(data) {
-            var globalBTTV = new Array(),
-                globalBTTV_GIF = new Array(),
-                overrideEmotes = new Array(),
+    .done(function(data) {
+        var globalBTTV = new Array(),
+            globalBTTV_GIF = new Array(),
+            overrideEmotes = new Array(),
 
-                emotes = data["emotes"];
+            emotes = data["emotes"];
 
-            var i = emotes.length;
-            while(i--) {
-            	var req_spaces = /[^A-Za-z0-9]/.test(emotes[i]["regex"]);
+        var i = emotes.length;
+        while(i--) {
+        	var req_spaces = /[^A-Za-z0-9]/.test(emotes[i]["regex"]);
 
-                var emote = emotes[i],
-                    match = /cdn.betterttv.net\/emote\/(\w+)/.exec(emote["url"]),
-                    id = match && match[1];
+            var emote = emotes[i],
+                match = /cdn.betterttv.net\/emote\/(\w+)/.exec(emote["url"]),
+                id = match && match[1];
 
-                if (emote["channel"])
-                    continue;
+            if (emote["channel"])
+                continue;
 
-                var xMote = {
-                    urls: { 1: emote["url"] },
-                    name: emote["regex"],
-                    width: emote["width"],
-                    height: emote["height"],
-                    require_spaces: req_spaces
+            var xMote = {
+                urls: { 1: emote["url"] },
+                name: emote["regex"],
+                width: emote["width"],
+                height: emote["height"],
+                require_spaces: req_spaces
+            };
+
+            if (id) {
+                xMote["id"] = id;
+                xMote["urls"] = {
+                    1: "https://cdn.betterttv.net/emote/" + id + "/1x",
+                    2: "https://cdn.betterttv.net/emote/" + id + "/2x",
+                    4: "https://cdn.betterttv.net/emote/" + id + "/3x"
                 };
-
-                if (id) {
-                    xMote["id"] = id;
-                    xMote["urls"] = {
-                        1: "https://cdn.betterttv.net/emote/" + id + "/1x",
-                        2: "https://cdn.betterttv.net/emote/" + id + "/2x",
-                        4: "https://cdn.betterttv.net/emote/" + id + "/3x"
-                    };
-                }
-
-                if(isOverrideEmote(emote["regex"]))
-                    overrideEmotes.push(xMote);
-                else {
-                  emote["imageType"] === "gif" ? globalBTTV_GIF.push(xMote) : globalBTTV.push(xMote);
-                }
             }
 
-            var set = {
-                emoticons: globalBTTV
-            };
-            api.register_global_set(1, set);
-            if(!enable_global_emotes)
-                api.unregister_global_set(1);
-            api.emote_sets[1].hidden = !show_emotes_in_menu;
-
-            set = {
-                emoticons: globalBTTV_GIF,
-                title: "Global Emoticons (GIF)"
-            };
-            api.register_global_set(2, set);
-            if(!enable_global_emotes || !enable_gif_emotes)
-                api.unregister_global_set(2);
-            api.emote_sets[2].hidden = !show_emotes_in_menu;
-
-            set = {
-                emoticons: overrideEmotes,
-                title: "Global Emoticons (Override)"
-            };
-            api.register_global_set(3, set);
-            if(!enable_global_emotes || !enable_override_emotes)
-                api.unregister_global_set(3);
-            api.emote_sets[3].hidden = !show_emotes_in_menu;
-
-            global_emotes_loaded = true;
-
-        }).fail(function(data) {
-            if (data["status"] === 404)
-                return;
-
-            attempts = (attempts || 0) + 1;
-            if (attempts < 12) {
-                api.log("Failed to fetch BTTV global emotes. Trying again in 5 seconds.");
-                return setTimeout(implementBTTVGlobals.bind(this, attempts), 5000);
+            if(isOverrideEmote(emote["regex"]))
+                overrideEmotes.push(xMote);
+            else {
+              emote["imageType"] === "gif" ? globalBTTV_GIF.push(xMote) : globalBTTV.push(xMote);
             }
-        });
+        }
+
+        var set = {
+            emoticons: globalBTTV
+        };
+        api.register_global_set(1, set);
+        if(!enable_global_emotes)
+            api.unregister_global_set(1);
+        api.emote_sets[1].hidden = !show_emotes_in_menu;
+
+        set = {
+            emoticons: globalBTTV_GIF,
+            title: "Global Emoticons (GIF)"
+        };
+        api.register_global_set(2, set);
+        if(!enable_global_emotes || !enable_gif_emotes)
+            api.unregister_global_set(2);
+        api.emote_sets[2].hidden = !show_emotes_in_menu;
+
+        set = {
+            emoticons: overrideEmotes,
+            title: "Global Emoticons (Override)"
+        };
+        api.register_global_set(3, set);
+        if(!enable_global_emotes || !enable_override_emotes)
+            api.unregister_global_set(3);
+        api.emote_sets[3].hidden = !show_emotes_in_menu;
+
+        global_emotes_loaded = true;
+
+    }).fail(function(data) {
+        if (data["status"] === 404)
+            return;
+
+        attempts = (attempts || 0) + 1;
+        if (attempts < 12) {
+            api.log("Failed to fetch BTTV global emotes. Trying again in 5 seconds.");
+            return setTimeout(implementBTTVGlobals.bind(this, attempts), 5000);
+        }
+    });
 };
 
 var implementBTTVBadges = function(attempts) {
