@@ -8,7 +8,7 @@
 
 // Global Storage / Settings
 
-var version = "1.3.8";
+var version = "1.3.9";
 
 var _initialized,
 
@@ -227,6 +227,14 @@ var chatFilter = function(msg) {
     }
 };
 
+var hatEmotes = [
+  "HalloHalo",
+  "HalloFedora",
+  "HalloHorns",
+  "HalloWitch",
+  "HalloKKona",
+  "HalloPirate"
+];
 
 var channelCallback = function(room_id, reg_function, attempts) {
     if(enable_pro_emotes) {
@@ -246,23 +254,22 @@ var channelCallback = function(room_id, reg_function, attempts) {
             var emote = emotes[i],
                 id = emote["id"],
 
-                xMote = {
-                    urls: {
-                        1: "https://cdn.betterttv.net/emote/" + id + "/1x",
-                        2: "https://cdn.betterttv.net/emote/" + id + "/2x",
-                        4: "https://cdn.betterttv.net/emote/" + id + "/3x"
-                    },
-                    id: id,
-                    name: emote["code"],
-                    width: 28,
-                    height: 28,
-                    owner: {
-                        display_name: emote["channel"] || room_id,
-                        name: emote["channel"]
-                    },
-                    require_spaces: req_spaces
-                };
-
+            xMote = {
+                urls: {
+                    1: "https://cdn.betterttv.net/emote/" + id + "/1x",
+                    2: "https://cdn.betterttv.net/emote/" + id + "/2x",
+                    4: "https://cdn.betterttv.net/emote/" + id + "/3x"
+                },
+                id: id,
+                name: emote["code"],
+                width: 28,
+                height: 28,
+                owner: {
+                    display_name: emote["channel"] || room_id,
+                    name: emote["channel"]
+                },
+                require_spaces: req_spaces
+            };
 
             if (emote["imageType"] === "png")
                 channelBTTV.push(xMote);
@@ -387,6 +394,11 @@ var implementBTTVGlobals = function(attempts) {
                     2: "https://cdn.betterttv.net/emote/" + id + "/2x",
                     4: "https://cdn.betterttv.net/emote/" + id + "/3x"
                 };
+            }
+
+            if (hatEmotes.indexOf(emote["regex"]) != -1) {
+                xMote["margins"] = "0px 0px 0px -28px";
+                xMote["modifier"] = true;
             }
 
             if(isOverrideEmote(emote["regex"]))
