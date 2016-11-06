@@ -39,7 +39,11 @@
    "description": "Get those BetterTTV emotes in FFZ!",
    "main": "main",
    "name": "bttv4ffz",
-   "version": "1.1.1"
+   "permissions": {
+    "private-browsing": true,
+    "multiprocess": true
+   },
+   "version": "1.1.2"
   }
  },
  "name": "bttv4ffz",

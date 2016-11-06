@@ -8,7 +8,7 @@
 
 // Global Storage / Settings
 
-var version = "1.3.9";
+var version = "1.3.10";
 
 var _initialized,
 
@@ -227,14 +227,7 @@ var chatFilter = function(msg) {
     }
 };
 
-var hatEmotes = [
-  "HalloHalo",
-  "HalloFedora",
-  "HalloHorns",
-  "HalloWitch",
-  "HalloKKona",
-  "HalloPirate"
-];
+var hatEmotes = [];
 
 var channelCallback = function(room_id, reg_function, attempts) {
     if(enable_pro_emotes) {
@@ -396,8 +389,9 @@ var implementBTTVGlobals = function(attempts) {
                 };
             }
 
+            // Hat emote check
             if (hatEmotes.indexOf(emote["regex"]) != -1) {
-                xMote["margins"] = "0px 0px 0px -28px";
+                xMote["margins"] = "0px 0px 8px 0px";
                 xMote["modifier"] = true;
             }
 
