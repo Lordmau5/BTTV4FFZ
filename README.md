@@ -1,3 +1,13 @@
+# Important information!
+**BTTV4FFZ is deprecated.**
+
+**Please move over to the new repository located at:**
+
+**https://github.com/Lordmau5/The-FFZ-Addon-Pack**
+
+
+___
+
 # BTTV4FFZ
 Better Twitch TV emotes for FrankerFaceZ
 ___
